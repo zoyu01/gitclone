@@ -1,0 +1,91 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+permissions:
+  contents: write
+# Controls when the workflow will run
+on:
+#  # Triggers the workflow on push or pull request events but only for the "main" branch
+#  push:
+#    branches: [ "main" ]
+#  pull_request:
+#    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+
+      # Runs a single command using the runners shell
+      - name: Run a one-line script
+        run: echo Hello, world!
+
+      - name: build frida for Android
+        shell: bash
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                    
+          #  git clone --recursive --branch 17.9.1 https://github.com/frida/frida
+          #git clone --recursive --branch 17.17.0 --depth=10  https://github.com/frida/frida
+          git clone --branch 17.17.0 --depth=10 https://github.com/frida/frida
+          cd frida
+          git submodule status
+          
+          git submodule update --init --depth=10 releng
+          git submodule update --init --depth=10 subprojects/frida-clr
+          git submodule update --init --depth=10 subprojects/frida-core
+          git submodule update --init --depth=10 subprojects/frida-go
+          git submodule update --init --depth=10 subprojects/frida-gum
+          git submodule update --init --depth=10 subprojects/frida-node
+          git submodule update --init --depth=10 subprojects/frida-python
+          git submodule update --init --depth=10 subprojects/frida-qml
+          git submodule update --init --depth=10 subprojects/frida-swift
+          git submodule update --init --depth=10 subprojects/frida-tools
+
+          tar -czf ../frida.17.9.1.src.tar.gz ./
+
+      - name: Check release version
+        id: checkReleaseVersion
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            try {
+              const releaseVersion = '17.9.1'
+              const releaseResponse = await github.repos.getReleaseByTag({
+                tag: releaseVersion
+              })
+              const {
+                data: { id: releaseId, html_url: htmlUrl, upload_url: uploadUrl }
+              } = releaseResponse;
+              core.setOutput('id', releaseId);
+              core.setOutput('html_url', htmlUrl);
+              core.setOutput('upload_url', uploadUrl);
+              core.setOutput('version', releaseVersion);
+            } catch (e) {
+              core.setFailed(e.message);
+            }
+
+
+      - name: Upload Source0
+        uses: actions/upload-release-asset@v1.0.2
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: '${{ steps.checkReleaseVersion.outputs.upload_url }}'
+          asset_path: '${{ github.workspace }}/frida.17.9.1.src.tar.gz'
+          asset_name: 'frida.17.9.1.src.tar.gz'
+          asset_content_type: application/octet-stream
+	  
