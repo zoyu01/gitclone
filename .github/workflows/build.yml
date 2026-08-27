@@ -25,9 +25,6 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
 
 #      - name: build frida for Android
 #        shell: bash
@@ -54,6 +51,14 @@ jobs:
 #
 #          tar -czf ../frida.17.9.1.src.tar.gz ./
 
+      - name: Split Repository Name
+        id: split_name
+        run: |
+          repo_name=${{ github.repository }}
+          IFS='/' read -ra repo_parts <<< "$repo_name"
+          echo "owner=${repo_parts[0]}" >> $GITHUB_OUTPUT
+          echo "repo=${repo_parts[1]}" >> $GITHUB_OUTPUT
+          echo $repo_name
       - name: Check release version
         id: checkReleaseVersion
         uses: actions/github-script@v3
@@ -63,6 +68,8 @@ jobs:
             try {
               const releaseVersion = '17.9.1'
               const releaseResponse = await github.repos.getReleaseByTag({
+                owner: '${{ steps.split_name.outputs.owner }}',
+                repo: '${{ steps.split_name.outputs.repo }}',
                 tag: releaseVersion
               })
               const {
@@ -75,15 +82,6 @@ jobs:
             } catch (e) {
               core.setFailed(e.message);
             }
-
-      - name: Split Repository Name
-        id: split_name
-        run: |
-          repo_name=${{ github.repository }}
-          IFS='/' read -ra repo_parts <<< "$repo_name"
-          echo "owner=${repo_parts[0]}" >> $GITHUB_OUTPUT
-          echo "repo=${repo_parts[1]}" >> $GITHUB_OUTPUT
-          echo $repo_name
 
       - name: Upload Source0
         uses: actions/upload-release-asset@v1.0.2
