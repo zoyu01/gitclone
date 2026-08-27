@@ -63,8 +63,6 @@ jobs:
             try {
               const releaseVersion = '17.9.1'
               const releaseResponse = await github.repos.getReleaseByTag({
-               # owner: '${{ steps.split_name.outputs.owner }}',
-               # repo: '${{ steps.split_name.outputs.repo }}',
                 tag: releaseVersion
               })
               const {
