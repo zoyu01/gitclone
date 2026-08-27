@@ -76,6 +76,14 @@ jobs:
               core.setFailed(e.message);
             }
 
+      - name: Split Repository Name
+        id: split_name
+        run: |
+          repo_name=${{ github.repository }}
+          IFS='/' read -ra repo_parts <<< "$repo_name"
+          echo "owner=${repo_parts[0]}" >> $GITHUB_OUTPUT
+          echo "repo=${repo_parts[1]}" >> $GITHUB_OUTPUT
+          echo $repo_name
 
       - name: Upload Source0
         uses: actions/upload-release-asset@v1.0.2
