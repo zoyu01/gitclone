@@ -61,27 +61,43 @@ jobs:
           echo $repo_name
       - name: Check release version
         id: checkReleaseVersion
-        uses: actions/github-script@v3
+        uses: actions/github-script@v7
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
+            const tag = '17.9.1';  // 或从 input 获取
+            let release;
             try {
-              const releaseVersion = '17.9.1'
-              const releaseResponse = await github.repos.getReleaseByTag({
-                owner: '${{ steps.split_name.outputs.owner }}',
-                repo: '${{ steps.split_name.outputs.repo }}',
-                tag: releaseVersion
-              })
-              const {
-                data: { id: releaseId, html_url: htmlUrl, upload_url: uploadUrl }
-              } = releaseResponse;
-              core.setOutput('id', releaseId);
-              core.setOutput('html_url', htmlUrl);
-              core.setOutput('upload_url', uploadUrl);
-              core.setOutput('version', releaseVersion);
-            } catch (e) {
-              core.setFailed(e.message);
+              // 尝试获取已存在的 Release
+              const { data } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+              release = data;
+              console.log('Found existing release:', release.html_url);
+            } catch (error) {
+              if (error.status === 404) {
+                console.log(`Release for tag ${tag} not found, creating one...`);
+                // 创建一个新的 Release（草稿或正式）
+                const { data: newRelease } = await github.rest.repos.createRelease({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  tag_name: tag,
+                  name: `Release ${tag}`,
+                  draft: false,
+                  prerelease: false,
+                });
+                release = newRelease;
+              } else {
+                throw error; // 其他错误，如权限不足
+              }
             }
+            // 输出结果，供后续步骤使用
+            core.setOutput('id', release.id);
+            core.setOutput('html_url', release.html_url);
+            core.setOutput('upload_url', release.upload_url);
+            core.setOutput('tag', tag);
 
       - name: Upload Source0
         uses: actions/upload-release-asset@v1.0.2
